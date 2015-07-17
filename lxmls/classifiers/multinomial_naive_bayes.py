@@ -36,21 +36,33 @@ class MultinomialNaiveBayes(lc.LinearClassifier):
             # prior[0] is the prior probability of a document being of class 0
             # likelihood[4, 0] is the likelihood of the fifth(*) feature being active, given that the document is of class 0
             # (*) recall that Python starts indices at 0, so an index of 4 corresponds to the fifth feature!
-        
-        ###########################
-        # Code to be deleted
-        for i in xrange(n_classes):
-            docs_in_class,_ = np.nonzero(y == classes[i]) # docs_in_class = indices of documents in class i
-            prior[i] = 1.0*len(docs_in_class)/n_docs # prior = fraction of documents with this class
 
-            word_count_in_class = x[docs_in_class,:].sum(0) # word_count_in_class = count of word occurrences in documents of class i
-            total_words_in_class = word_count_in_class.sum() # total_words_in_class = total number of words in documents of class i
-            if self.smooth == False:
-                likelihood[:,i] = word_count_in_class/total_words_in_class # likelihood = count of occurrences of a word in a class
-            else:
-                likelihood[:,i] = (word_count_in_class + self.smooth_param) / (total_words_in_class + self.smooth_param*n_words)
-        # End of code to be deleted
-        ###########################
+        # Calculating priors
+        # First count all occurences 
+        for y_i in y:
+            prior[y_i] += 1
+        # Divide by the sum of all documents to get a relative probablilty
+        for i in xrange(n_classes):
+            prior[i] /= n_docs
+
+        # Create array to store total word occurences
+        word_count = np.zeros(n_words) 
+
+        # Calculating class-conditional word probabilities:
+        for key, doc in enumerate(x):
+            # Count all occurences of words per class
+            for word_key, exist in enumerate(doc): 
+                if exist:
+                    likelihood[word_key, y[key]] += 1
+                    word_count[word_key] += 1
+
+        # Smoothing
+        for word in xrange(n_words):
+            word_count[word] += n_words
+            likelihood[word, :] += 1
+
+        for word in xrange(n_words):
+            likelihood[word, :] /= word_count[word]
 
         params = np.zeros((n_words+1,n_classes))
         for i in xrange(n_classes):
